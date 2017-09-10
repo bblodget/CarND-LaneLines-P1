@@ -161,7 +161,7 @@ def find_lanes(src):
     edges = canny(blur, low_threshold, high_threshold)
 
     # get region of interest
-    vertices = np.array([[(0,imshape[0]),(450, 310), (490, 310), (imshape[1],imshape[0])]], dtype=np.int32)
+    vertices = np.array([[(0,imshape[0]),(450, 312), (490, 312), (imshape[1],imshape[0])]], dtype=np.int32)
     #vertices = np.array( [[0,539],[480,200], [850,539]], dtype=np.int32 )
     roi = region_of_interest(edges, vertices)
 
@@ -169,8 +169,8 @@ def find_lanes(src):
     rho = 2
     theta =  np.pi/180
     threshold = 15
-    min_line_len = 40
-    max_line_gap = 20
+    min_line_len = 35
+    max_line_gap = 14
     lines = hough_lines(roi, rho, theta, threshold, min_line_len, max_line_gap)
 
     # Overlay the lines image on top of src image
