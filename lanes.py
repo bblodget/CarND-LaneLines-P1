@@ -6,6 +6,10 @@ import cv2
 import math
 import os
 
+# Import everything needed to edit/save/watch video clips
+from moviepy.editor import VideoFileClip
+from IPython.display import HTML
+
 def grayscale(img):
     """Applies the Grayscale transform
     This will return an image with only one color channel
@@ -49,31 +53,26 @@ def region_of_interest(img, vertices):
     return masked_image
 
 
-def draw_lines(img, lines, left_color=[255, 255, 0], right_color=[255,0,0], thickness=10):
+def draw_lanes(img, lines, left_color=[255, 255, 0], right_color=[255,0,0], thickness=10):
     """
-    NOTE: this is the function you might want to use as a starting point once you want to 
-    average/extrapolate the line segments you detect to map out the full
-    extent of the lane (going from the result shown in raw-lines-example.mp4
-    to that shown in P1_example.mp4).  
-    
-    Think about things like separating line segments by their 
-    slope ((y2-y1)/(x2-x1)) to decide which segments are part of the left
-    line vs. the right line.  Then, you can average the position of each of 
-    the lines and extrapolate to the top and bottom of the lane.
-    
-    This function draws `lines` with `color` and `thickness`.    
-    Lines are drawn on the image inplace (mutates the image).
-    If you want to make the lines semi-transparent, think about combining
-    this function with the weighted_img() function below
+    This function extrapolates the lane markers and draws them.
+    It marks the left and right lane with two different colors.
+    By default the left lane is drawn in yellow and the 
+    right lane is drawn in red.
     """
 
     imshape = img.shape
 
+    # Points to define left lane line
     left_near = [imshape[1],0]
     left_far = [0,imshape[0]]
 
+    # Points to define right lane line
     right_near = [0,0]
     right_far = [imshape[1],imshape[0]]
+
+    # Lane points need to be greater than miny
+    miny = 310
 
     for line in lines:
         for x1,y1,x2,y2 in line:
@@ -82,48 +81,67 @@ def draw_lines(img, lines, left_color=[255, 255, 0], right_color=[255,0,0], thic
             # negative slope is the left lane line
             if slope <0:
 
-                # Track Left line near point
-                if x1<left_near[0] and y1>left_near[1]:
-                    left_near = [x1,y1]
-                if x2<left_near[0] and y2>left_near[1]:
-                    left_near = [x2,y2]
+                # Check that slope is in valid range
+                # and points y coord is greater than miny
+                if slope > -0.8 and slope < -0.6 and y1>miny and y2>miny:
+                    # print("LEFT lane slope: ",slope)
 
-                # Track Left line far point
-                if x1>left_far[0] and y1<left_far[1]:
-                    left_far = [x1,y1]
-                if x2>left_far[0] and y2<left_far[1]:
-                    left_far = [x2,y2]
+                    # Track Left line near point
+                    if x1<left_near[0] and y1>left_near[1]:
+                        left_near = [x1,y1]
+                    if x2<left_near[0] and y2>left_near[1]:
+                        left_near = [x2,y2]
+
+                    # Track Left line far point
+                    if x1>left_far[0] and y1<left_far[1]:
+                        left_far = [x1,y1]
+                    if x2>left_far[0] and y2<left_far[1]:
+                        left_far = [x2,y2]
+
+                #else:
+                    # print("   LEFT lane exclude slope: ",slope)
 
             # positive slope is the right lane line
             else:
 
-                # Track Right line near point
-                if x1>right_near[0] and y1>right_near[1]:
-                    right_near = [x1,y1]
-                if x2>right_near[0] and y2>right_near[1]:
-                    right_near = [x2,y2]
+                # Check that slope is in valid range
+                # and points y coord is greater than miny
+                if slope > 0.56  and slope < 0.75 and y1>miny and y2>miny:
+                    # print("RIGHT lane slope: ",slope)
 
-                # Track Right line far point
-                if x1<right_far[0] and y1<right_far[1]:
-                    right_far = [x1,y1]
-                if x2<right_far[0] and y2<right_far[1]:
-                    right_far = [x2,y2]
+                    # Track Right line near point
+                    if x1>right_near[0] and y1>right_near[1]:
+                        right_near = [x1,y1]
+                    if x2>right_near[0] and y2>right_near[1]:
+                        right_near = [x2,y2]
+
+                    # Track Right line far point
+                    if x1<right_far[0] and y1<right_far[1]:
+                        right_far = [x1,y1]
+                    if x2<right_far[0] and y2<right_far[1]:
+                        right_far = [x2,y2]
+
+                #else:
+                    # print("   RIGHT lane exclude slope: ",slope)
 
     # Draw left lane
-    cv2.line(img, (left_near[0], left_near[1]), (left_far[0], left_far[1]), left_color, thickness)
+    if left_near[1]>miny and left_far[1]>miny:
+        cv2.line(img, (left_near[0], left_near[1]), (left_far[0], left_far[1]), left_color, thickness)
 
     # Draw right lane
-    cv2.line(img, (right_near[0], right_near[1]), (right_far[0], right_far[1]), right_color, thickness)
+    if right_near[1]>miny and right_far[1]>miny:
+        cv2.line(img, (right_near[0], right_near[1]), (right_far[0], right_far[1]), right_color, thickness)
 
-def hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap):
+def hough_lines2(img, rho, theta, threshold, min_line_len, max_line_gap):
     """
     `img` should be the output of a Canny transform.
         
     Returns an image with hough lines drawn.
+    Modified to call draw_lanes instead of draw_lines.
     """
     lines = cv2.HoughLinesP(img, rho, theta, threshold, np.array([]), minLineLength=min_line_len, maxLineGap=max_line_gap)
     line_img = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
-    draw_lines(line_img, lines)
+    draw_lanes(line_img, lines)
     return line_img
 
 # Python 3 has support for cool math symbols.
@@ -146,7 +164,12 @@ def weighted_img(img, initial_img, α=0.8, β=1., λ=0.):
 
 # TODO: Build your pipeline that will draw lane lines on the test_images
 # then save them to the test_images directory.
-def find_lanes(src):
+def find_lanes_pipeline(src):
+    """ 
+    This function implements the pipeline
+    to draw lane lines on the specified src image.
+    """
+
     imshape = src.shape
 
     # Convert image to gray scale
@@ -162,7 +185,6 @@ def find_lanes(src):
 
     # get region of interest
     vertices = np.array([[(0,imshape[0]),(450, 312), (490, 312), (imshape[1],imshape[0])]], dtype=np.int32)
-    #vertices = np.array( [[0,539],[480,200], [850,539]], dtype=np.int32 )
     roi = region_of_interest(edges, vertices)
 
     # get the hough lines
@@ -170,23 +192,50 @@ def find_lanes(src):
     theta =  np.pi/180
     threshold = 15
     min_line_len = 35
-    max_line_gap = 14
-    lines = hough_lines(roi, rho, theta, threshold, min_line_len, max_line_gap)
+    max_line_gap = 12
+    lines = hough_lines2(roi, rho, theta, threshold, min_line_len, max_line_gap)
 
     # Overlay the lines image on top of src image
     overlay = weighted_img(lines, src)
 
     return overlay
 
+def process_image(image):
+    # NOTE: The output you return should be a color image (3 channel) for processing video below
+    # TODO: put your pipeline here,
+    # you should return the final output (image where lines are drawn on lanes)
+    result = find_lanes_pipeline(image)
 
-# Main Loop
+    return result
+
+
+#
+# Main
+#
+
+# Draw lane lines on the test images
+# and save them to the test_images_output
+# directory.
 filenames = os.listdir("test_images/")
 print("filenames: ",filenames)
 
 for filename in filenames:
+    # print("\nFilename: ",filename)
     src = mpimg.imread("test_images/"+filename)
-    dst = find_lanes(src)
+    dst = find_lanes_pipeline(src)
     filename_png = filename.replace("jpg","png")
     mpimg.imsave("test_images_output/"+filename_png,dst)
+
+
+# Draw lane lines on the test videos
+# and save them to the test_videos_output
+# directory.
+filenames = os.listdir("test_videos/")
+print("filenames: ",filenames)
+
+for filename in filenames:
+    src_clip = VideoFileClip("test_videos/"+filename)
+    dst_clip = src_clip.fl_image(process_image) #NOTE: this function expects color images!!
+    dst_clip.write_videofile("test_videos_output/"+filename)
 
 
