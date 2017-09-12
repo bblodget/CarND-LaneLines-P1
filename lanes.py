@@ -52,6 +52,29 @@ def region_of_interest(img, vertices):
     masked_image = cv2.bitwise_and(img, mask)
     return masked_image
 
+def draw_lane(img, near_pt, far_pt, miny, maxy, color, thickness):
+
+    # Increase miny to keep lines from touching
+    miny = miny + 20
+
+    # Calculate the current slope and intercept
+    x1 = near_pt[0]
+    y1 = near_pt[1]
+    x2 = far_pt[0]
+    y2 = far_pt[1]
+    m = ((y2-y1)/(x2-x1))
+    b = y1 - (m*x1)
+
+    # Recalculate points to draw left lane from bottom to top of roi
+    y1 = maxy
+    x1 = int((y1 - b)/ m)
+    y2=miny
+    x2 = int((y2 - b)/m)
+
+    # Draw left lane
+    if y1>=miny and y2>=miny:
+        cv2.line(img, (x1, y1), (x2, y2), color, thickness)
+
 
 def draw_lanes(img, lines, left_color=[255, 255, 0], right_color=[255,0,0], thickness=10):
     """
@@ -62,14 +85,16 @@ def draw_lanes(img, lines, left_color=[255, 255, 0], right_color=[255,0,0], thic
     """
 
     imshape = img.shape
+    height = imshape[0]
+    width = imshape[1]
 
     # Points to define left lane line
-    left_near = [imshape[1],0]
-    left_far = [0,imshape[0]]
+    left_near = [width,0]
+    left_far = [0,height]
 
     # Points to define right lane line
     right_near = [0,0]
-    right_far = [imshape[1],imshape[0]]
+    right_far = [width,height]
 
     # Lane points need to be greater than miny
     miny = 310
@@ -84,7 +109,6 @@ def draw_lanes(img, lines, left_color=[255, 255, 0], right_color=[255,0,0], thic
                 # Check that slope is in valid range
                 # and points y coord is greater than miny
                 if slope > -0.8 and slope < -0.6 and y1>miny and y2>miny:
-                    # print("LEFT lane slope: ",slope)
 
                     # Track Left line near point
                     if x1<left_near[0] and y1>left_near[1]:
@@ -98,8 +122,6 @@ def draw_lanes(img, lines, left_color=[255, 255, 0], right_color=[255,0,0], thic
                     if x2>left_far[0] and y2<left_far[1]:
                         left_far = [x2,y2]
 
-                #else:
-                    # print("   LEFT lane exclude slope: ",slope)
 
             # positive slope is the right lane line
             else:
@@ -107,7 +129,6 @@ def draw_lanes(img, lines, left_color=[255, 255, 0], right_color=[255,0,0], thic
                 # Check that slope is in valid range
                 # and points y coord is greater than miny
                 if slope > 0.56  and slope < 0.75 and y1>miny and y2>miny:
-                    # print("RIGHT lane slope: ",slope)
 
                     # Track Right line near point
                     if x1>right_near[0] and y1>right_near[1]:
@@ -121,16 +142,12 @@ def draw_lanes(img, lines, left_color=[255, 255, 0], right_color=[255,0,0], thic
                     if x2<right_far[0] and y2<right_far[1]:
                         right_far = [x2,y2]
 
-                #else:
-                    # print("   RIGHT lane exclude slope: ",slope)
-
     # Draw left lane
-    if left_near[1]>miny and left_far[1]>miny:
-        cv2.line(img, (left_near[0], left_near[1]), (left_far[0], left_far[1]), left_color, thickness)
+    draw_lane(img, left_near, left_far, miny, height, left_color, thickness)
 
     # Draw right lane
-    if right_near[1]>miny and right_far[1]>miny:
-        cv2.line(img, (right_near[0], right_near[1]), (right_far[0], right_far[1]), right_color, thickness)
+    draw_lane(img, right_near, right_far, miny, height, right_color, thickness)
+
 
 def hough_lines2(img, rho, theta, threshold, min_line_len, max_line_gap):
     """
@@ -220,7 +237,6 @@ filenames = os.listdir("test_images/")
 print("filenames: ",filenames)
 
 for filename in filenames:
-    # print("\nFilename: ",filename)
     src = mpimg.imread("test_images/"+filename)
     dst = find_lanes_pipeline(src)
     filename_png = filename.replace("jpg","png")
