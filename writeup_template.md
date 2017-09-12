@@ -29,8 +29,7 @@ The draw_lane() functions get passed the filtered hough lines that define one la
 
 Lastly the image with the lane lines is merged (overlayed) with the original source image.  Here is a sample resulting image:
 
-![output image][./test_images_output/solidYellowCurve.png]
-
+<img src="test_images_output/solidYellowCurve.png" width="480" alt="sample output" />
 
 ### 2. Identify potential shortcomings with your current pipeline
 
@@ -41,12 +40,12 @@ My current pipeline also does not work great with the challenge video.  It does 
 
 ### 3. Suggest possible improvements to your pipeline
 
-A possible improvement could be to do some averaging between frames to reduce the lane line dancing.  Make the lane lines move more smoothly.  
+A possible improvement could be to do some averaging between frames to reduce the lane line dancing in the videos.  Make the lane lines move more smoothly.  
 
 I think there is room to make improvements with better tuning of the canny and hough line parameters.  
 
 I also think that maybe doing some color filtering in HSV color space, before going to gray scale,  might help with issues like shadows on the road.
 
-One other idea is to draw many conected lines to be able to follow the lane into a curve.  One could select many y values, and select a hough line that contains that y value.  Then you could draw lines between the midpoints of those select hough lines.
+One other idea is to draw many connected lines to be able to follow the lane into a curve.  One could select many y values, and select a hough line that contains that y value.  Then you could draw lines between the midpoints of those select hough lines.
 
 
