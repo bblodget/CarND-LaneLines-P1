@@ -52,16 +52,17 @@ def region_of_interest(img, vertices):
     masked_image = cv2.bitwise_and(img, mask)
     return masked_image
 
-def draw_lane(img, near_pt, far_pt, miny, maxy, color, thickness):
+def draw_lane(img, x1, y1, x2, y2, miny, maxy, color, thickness):
+    """
+    Draw a lane line given a sample line that has the
+    median slope of all the lane lines.  Extrapolate
+    the full line from bottom to top of roi.
+    """
 
     # Increase miny to keep lines from touching
     miny = miny + 20
 
     # Calculate the current slope and intercept
-    x1 = near_pt[0]
-    y1 = near_pt[1]
-    x2 = far_pt[0]
-    y2 = far_pt[1]
     m = ((y2-y1)/(x2-x1))
     b = y1 - (m*x1)
 
@@ -75,6 +76,14 @@ def draw_lane(img, near_pt, far_pt, miny, maxy, color, thickness):
     if y1>=miny and y2>=miny:
         cv2.line(img, (x1, y1), (x2, y2), color, thickness)
 
+def by_slope(line):
+    """
+    This function is used by the sort() method
+    to sort a list of lines by slope.
+    """
+    x1,y1,x2,y2 = line[0]
+    return (y2-y1)/(x2-x1)
+
 
 def draw_lanes(img, lines, left_color=[255, 255, 0], right_color=[255,0,0], thickness=10):
     """
@@ -84,20 +93,14 @@ def draw_lanes(img, lines, left_color=[255, 255, 0], right_color=[255,0,0], thic
     right lane is drawn in red.
     """
 
-    imshape = img.shape
-    height = imshape[0]
-    width = imshape[1]
-
-    # Points to define left lane line
-    left_near = [width,0]
-    left_far = [0,height]
-
-    # Points to define right lane line
-    right_near = [0,0]
-    right_far = [width,height]
+    maxy = img.shape[0] # height of image
 
     # Lane points need to be greater than miny
     miny = 310
+
+    # Create lists to hold left and right lines.
+    left_lines = []
+    right_lines = []
 
     for line in lines:
         for x1,y1,x2,y2 in line:
@@ -108,19 +111,9 @@ def draw_lanes(img, lines, left_color=[255, 255, 0], right_color=[255,0,0], thic
 
                 # Check that slope is in valid range
                 # and points y coord is greater than miny
-                if slope > -0.8 and slope < -0.6 and y1>miny and y2>miny:
-
-                    # Track Left line near point
-                    if x1<left_near[0] and y1>left_near[1]:
-                        left_near = [x1,y1]
-                    if x2<left_near[0] and y2>left_near[1]:
-                        left_near = [x2,y2]
-
-                    # Track Left line far point
-                    if x1>left_far[0] and y1<left_far[1]:
-                        left_far = [x1,y1]
-                    if x2>left_far[0] and y2<left_far[1]:
-                        left_far = [x2,y2]
+                #if slope > -0.8 and slope < -0.6 and y1>miny and y2>miny:
+                if slope > -0.9 and slope < -0.5 and y1>miny and y2>miny:
+                    left_lines.append(line)
 
 
             # positive slope is the right lane line
@@ -128,25 +121,32 @@ def draw_lanes(img, lines, left_color=[255, 255, 0], right_color=[255,0,0], thic
 
                 # Check that slope is in valid range
                 # and points y coord is greater than miny
-                if slope > 0.56  and slope < 0.75 and y1>miny and y2>miny:
+                #if slope > 0.56  and slope < 0.75 and y1>miny and y2>miny:
+                if slope > 0.5  and slope < 0.8 and y1>miny and y2>miny:
+                    right_lines.append(line)
 
-                    # Track Right line near point
-                    if x1>right_near[0] and y1>right_near[1]:
-                        right_near = [x1,y1]
-                    if x2>right_near[0] and y2>right_near[1]:
-                        right_near = [x2,y2]
+    if len(left_lines) > 0:
+        # Sort the left lines by slope
+        left_lines.sort(key=by_slope)
 
-                    # Track Right line far point
-                    if x1<right_far[0] and y1<right_far[1]:
-                        right_far = [x1,y1]
-                    if x2<right_far[0] and y2<right_far[1]:
-                        right_far = [x2,y2]
 
-    # Draw left lane
-    draw_lane(img, left_near, left_far, miny, height, left_color, thickness)
+        # find the middle element
+        middle = int((len(left_lines)/2.0)+0.5)-1
+        x1,y1,x2,y2 = left_lines[middle][0]
 
-    # Draw right lane
-    draw_lane(img, right_near, right_far, miny, height, right_color, thickness)
+        # Draw left lane
+        draw_lane(img, x1, y1, x2, y2, miny, maxy, left_color, thickness)
+
+    if len(right_lines) > 0:
+        # Sort the right lines by slope
+        right_lines.sort(key=by_slope)
+
+        # find the middle element
+        middle = int((len(right_lines)/2.0)+0.5)-1
+        x1,y1,x2,y2 = right_lines[middle][0]
+
+        # Draw right lane
+        draw_lane(img, x1, y1, x2, y2, miny, maxy, right_color, thickness)
 
 
 def hough_lines2(img, rho, theta, threshold, min_line_len, max_line_gap):
