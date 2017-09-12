@@ -52,12 +52,31 @@ def region_of_interest(img, vertices):
     masked_image = cv2.bitwise_and(img, mask)
     return masked_image
 
-def draw_lane(img, x1, y1, x2, y2, miny, maxy, color, thickness):
+def by_slope(line):
     """
-    Draw a lane line given a sample line that has the
+    This function is used by the sort() method
+    to sort a list of lines by slope.
+    """
+    x1,y1,x2,y2 = line[0]
+    return (y2-y1)/(x2-x1)
+
+def draw_lane(img, lines, miny, maxy, color, thickness):
+    """
+    Draw a lane line from a sample line that has the
     median slope of all the lane lines.  Extrapolate
     the full line from bottom to top of roi.
     """
+
+    # Make sure there is at least 1 line in lines list
+    if len(lines) < 1:
+        return
+
+    # Sort the lines by slope
+    lines.sort(key=by_slope)
+
+    # find the middle element (median slope)
+    middle = int((len(lines)/2.0)+0.5)-1
+    x1,y1,x2,y2 = lines[middle][0]
 
     # Increase miny to keep lines from touching
     miny = miny + 20
@@ -73,16 +92,8 @@ def draw_lane(img, x1, y1, x2, y2, miny, maxy, color, thickness):
     x2 = int((y2 - b)/m)
 
     # Draw left lane
-    if y1>=miny and y2>=miny:
-        cv2.line(img, (x1, y1), (x2, y2), color, thickness)
+    cv2.line(img, (x1, y1), (x2, y2), color, thickness)
 
-def by_slope(line):
-    """
-    This function is used by the sort() method
-    to sort a list of lines by slope.
-    """
-    x1,y1,x2,y2 = line[0]
-    return (y2-y1)/(x2-x1)
 
 
 def draw_lanes(img, lines, left_color=[255, 255, 0], right_color=[255,0,0], thickness=10):
@@ -125,28 +136,11 @@ def draw_lanes(img, lines, left_color=[255, 255, 0], right_color=[255,0,0], thic
                 if slope > 0.5  and slope < 0.8 and y1>miny and y2>miny:
                     right_lines.append(line)
 
-    if len(left_lines) > 0:
-        # Sort the left lines by slope
-        left_lines.sort(key=by_slope)
+    # Draw left lane
+    draw_lane(img, left_lines, miny, maxy, left_color, thickness)
 
-
-        # find the middle element
-        middle = int((len(left_lines)/2.0)+0.5)-1
-        x1,y1,x2,y2 = left_lines[middle][0]
-
-        # Draw left lane
-        draw_lane(img, x1, y1, x2, y2, miny, maxy, left_color, thickness)
-
-    if len(right_lines) > 0:
-        # Sort the right lines by slope
-        right_lines.sort(key=by_slope)
-
-        # find the middle element
-        middle = int((len(right_lines)/2.0)+0.5)-1
-        x1,y1,x2,y2 = right_lines[middle][0]
-
-        # Draw right lane
-        draw_lane(img, x1, y1, x2, y2, miny, maxy, right_color, thickness)
+    # Draw right lane
+    draw_lane(img, right_lines, miny, maxy, right_color, thickness)
 
 
 def hough_lines2(img, rho, theta, threshold, min_line_len, max_line_gap):
